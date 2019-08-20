@@ -22,7 +22,8 @@ if __name__ == '__main__':
             vocab_size= len(dataset.QA.VOCAB)
             hidden_size= 100
 
-            model= DMN(hidden_size, vocab_size, num_pass= 3, qa= dataset.QA)   ##vocab_size denotes the size of word embedding used
+            model = DMN(hidden_size, vocab_size, num_pass= 3)   ##vocab_size denotes the size of word embedding used
+            model = model.cuda()
 
             early_stop_count= 0
             early_stop_flag= False
@@ -41,9 +42,9 @@ if __name__ == '__main__':
                         optim.zero_grad()
                         context, questions, answers = data
                         batch_size= context.size()[0]
-                        context= Variable(context.long())                           ## context.size() = (batch_size, num_sentences, embedding_length) embedding_length = hidden_size
-                        questions= Variable(questions.long())                       ## questions.size() = (batch_size, num_tokens)
-                        answers= Variable(answers.long())
+                        context= Variable(context.long().cuda())                           ## context.size() = (batch_size, num_sentences, embedding_length) embedding_length = hidden_size
+                        questions= Variable(questions.long().cuda())                       ## questions.size() = (batch_size, num_tokens)
+                        answers= Variable(answers.long().cuda())
 
                         total_loss, acc = model.loss(context,questions,answers)      ## Loss is calculated and gradients are backpropagated through the layers.
                         total_loss.backward()
@@ -52,7 +53,7 @@ if __name__ == '__main__':
 
                         if batch_id %20 == 0:
                             print('Training Error')
-                            print (f'[Task {task_id}, Epoch {epoch}] [Training] total_loss : {total_loss.data[0]: {10}.{8}}, acc : {total_acc / count: {5}.{4}}, batch_id : {batch_id}')
+                            print (f'[Task {task_id}, Epoch {epoch}] [Training] total_loss : {total_loss.data.item(): {10}.{8}}, acc : {total_acc / count: {5}.{4}}, batch_id : {batch_id}')
                         optim.step()
 
                     '''Validation part'''
@@ -67,9 +68,9 @@ if __name__ == '__main__':
                     for batch_idx,data in enumerate(valid_load):
                         context, questions, answers = data
                         batch_size = context.size()[0]
-                        context = Variable(context.long())
-                        questions = Variable(questions.long())
-                        answers = Variable(answers.long())
+                        context = Variable(context.long().cuda())
+                        questions = Variable(questions.long().cuda())
+                        answers = Variable(answers.long().cuda())
 
                         _, acc = model.loss(context,questions,answers)
                         total_acc += acc*batch_size
@@ -105,21 +106,21 @@ if __name__ == '__main__':
             for batch_id, data in enumerate(test_load):
                     context, questions, answers = data
                     batch_size = context.size()[0]
-                    context = Variable(context.long())
-                    questions = Variable(questions.long())
-                    answers = Variable(answers.long())
+                    context = Variable(context.long().cuda())
+                    questions = Variable(questions.long().cuda())
+                    answers = Variable(answers.long().cuda())
 
                     model.load_state_dict(best_state) # Loading the best model
                     _, acc = model.loss(context, questions, answers)
 
                     test_acc += acc* batch_size
                     count += batch_size
-                    print (f'[Run {itr}, Task {task_id}, Epoch {epoch}] [Test] Accuracy : {test_acc / cnt: {5}.{4}}')
+                    print (f'[Run {itr}, Task {task_id}, Epoch {epoch}] [Test] Accuracy : {test_acc / count: {5}.{4}}')
 
 
 
                     os.makedirs('models',exist_ok=True)
-                    with open(f'models/task{task_id}_epoch{epoch}_run{itr}_acc{test_acc/cnt}.pth', 'wb') as fp:
+                    with open(f'models/task{task_id}_epoch{epoch}_run{itr}_acc{test_acc/count}.pth', 'wb') as fp:
                         torch.save(model.state_dict(), fp)
                     with open('log.txt', 'a') as fp:
                         fp.write(f'[Run {itr}, Task {task_id}, Epoch {epoch}] [Test] Accuracy : {total_acc: {5}.{4}}' + '\n')
